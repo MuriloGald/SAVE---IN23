@@ -187,6 +187,29 @@ const STUDY_MODULES = [
       },
     ],
   },
+  {
+    id: 'mod7',
+    number: '07',
+    title: 'Gestão Condominial e Instalações por Conta Própria',
+    ref: 'Responsabilidade Civil/Criminal e Código Civil',
+    topics: [
+      {
+        title: 'O Perigo das Instalações por Conta Própria',
+        text: 'Quando moradores instalam carregadores sem projeto ou aprovação, eles criam riscos graves:<br>• <strong>Sobrecarga elétrica:</strong> A rede comum ou o transformador do condomínio não foram dimensionados para recarga simultânea, o que pode desarmar o disjuntor geral ou até queimar o transformador.<br>• <strong>Risco de Incêndio:</strong> Conexões inadequadas (extensões, tomadas comuns Modo 1, cabos subdimensionados) podem superaquecer.<br>• <strong>Responsabilidade do Síndico:</strong> O síndico responde civil e criminalmente pela segurança do prédio. Permitir instalações sem ART e sem projeto configura negligência.',
+        highlight: 'O síndico tem o poder-dever de exigir a desativação imediata de qualquer carregador irregular até que seja feito o projeto e a devida aprovação.',
+      },
+      {
+        title: 'Como Aprovar no Condomínio (Quóruns)',
+        text: 'A instalação de infraestrutura para SAVE é classificada como benfeitoria útil (Código Civil, Art. 1.341, II), exigindo aprovação de:<br>• <strong>Maioria dos condôminos (50% + 1 de todos os moradores)</strong> se envolver obras em áreas comuns.<br>• Se a instalação for feita na vaga privativa (área privativa) sem interferir em áreas comuns (difícil na prática devido à passagem de cabos), a aprovação é facilitada, mas ainda exige anuência técnica sobre a capacidade elétrica geral.',
+        highlight: 'A assembleia deve aprovar um Regulamento Interno de Recarga Elétrica para definir regras de uso, cobrança e rateio de custos.',
+      },
+      {
+        title: 'Passo a Passo para Regularização de Irregulares',
+        text: 'Se o condomínio já possui moradores com carregadores instalados por conta:<br>1. <strong>Vistoria Técnica:</strong> Realizar vistoria de diagnóstico (usando este checklist) para identificar riscos.<br>2. <strong>Notificação:</strong> O síndico deve notificar os moradores com pontos irregulares (especialmente Modo 1 ou com emendas) para desativação temporária.<br>3. <strong>Projeto Geral:</strong> Contratar engenheiro eletricista para fazer o projeto de infraestrutura do condomínio inteiro e estudo de demanda.<br>4. <strong>e-SCI (CBMSC):</strong> Dar entrada no processo de regularização do SAVE junto ao Corpo de Bombeiros (Anexo B ou A).',
+        highlight: 'A regularização coletiva é sempre mais barata e segura do que cada morador tentar fazer o seu individualmente.',
+      },
+    ],
+  },
 ];
 
 // ─── Dados do Checklist Inteligente ───────────────────────────────
