@@ -436,6 +436,12 @@ const CHECKLIST_SECTIONS = [
         condition: { field: 'tipo_local', values: ['ventilacao_natural'] },
       },
       {
+        id: 'vent_subsetorizada', type: 'yesno',
+        label: 'O pavimento foi subdividido em setores de até 1.500 m² por meio de compartimentação corta-fogo (TRRF ≥ 1h)?',
+        sublabel: 'IN 23, Art. 6º, § 5º — Permite aplicar o limite de 1.500 m² individualmente a cada setor compartimentado.',
+        condition: { field: 'vent_area_limite', values: ['nao'] },
+      },
+      {
         id: 'vent_deteccao', type: 'yesno',
         label: 'Possui sistema de detecção automática de incêndio (conforme IN 12) cobrindo a área do SAVE?',
         sublabel: 'IN 23, Art. 6º, Inciso VI — Exigência cumulativa.',
@@ -1441,7 +1447,7 @@ function exportReport() {
   let enquadramentoClass = 'nao-conforme';
 
   const isDescoberto = (tipoLocal === 'descoberto' || tipoLocal === 'cobertura_leve');
-  const isVentiladoDisp = (tipoLocal === 'ventilacao_natural' && answers['vent_aberturas_20pct'] === 'sim' && answers['vent_comprimento_40pct'] === 'sim' && answers['vent_area_limite'] === 'sim' && answers['vent_deteccao'] === 'sim');
+  const isVentiladoDisp = (tipoLocal === 'ventilacao_natural' && answers['vent_aberturas_20pct'] === 'sim' && answers['vent_comprimento_40pct'] === 'sim' && (answers['vent_area_limite'] === 'sim' || answers['vent_subsetorizada'] === 'sim') && answers['vent_deteccao'] === 'sim');
   const isFechadoDisp = (tipoLocal === 'fechado' && answers['fechado_compartimentacao'] === 'sim' && answers['fechado_deteccao'] === 'sim');
   const isSprinklerDisp = (answers['sprinkler_possui'] === 'sim' && (answers['sprinkler_alimentacao'] === 'dedicado' || (answers['sprinkler_chave_fluxo'] === 'sim' && answers['sprinkler_dreno_teste'] === 'sim' && answers['sprinkler_manometro'] === 'sim')));
 
