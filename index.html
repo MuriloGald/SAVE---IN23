@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Plataforma de estudo da IN 23/2026 (CBMSC) e checklist inteligente de vistoria para regularização de SAVE (Sistema de Alimentação de Veículos Elétricos) em edificações.">
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SAVE Regularização — IN 23 · Guia de Estudos & Checklist de Vistoria</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app" id="app">
+
+    <!-- ═══════════ HEADER ═══════════ -->
+    <header class="header" id="app-header">
+      <button class="header__back-btn hidden" id="back-btn" aria-label="Voltar">
+        ← Voltar
+      </button>
+      <h1 class="header__title" id="header-title">SAVE Regularização</h1>
+      <button class="header__menu-btn hidden" id="menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+        ☰
+      </button>
+    </header>
+
+    <!-- ═══════════ VIEW: LANDING ═══════════ -->
+    <div class="view view--active" id="view-landing">
+      <div class="landing">
+        <div class="landing__hero">
+          <h1 class="landing__title">Regularização SAVE</h1>
+          <p class="landing__subtitle">
+            Plataforma de estudo e vistoria técnica para Sistemas de Alimentação de Veículos Elétricos<br>
+            <strong>IN 23/2026 · IN 05 · NBR 17019</strong> — CBMSC
+          </p>
+        </div>
+        <div class="landing__cards" id="landing-cards">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ VIEW: GUIA DE ESTUDOS ═══════════ -->
+    <div class="view" id="view-study">
+      <div class="study">
+        <div class="study__intro">
+          <h2 class="text-cyan">📚 Guia de Estudos — IN 23 (Aprovada)</h2>
+          <p class="text-muted">
+            Interpretação completa e prática da Instrução Normativa nº 23/2026 do Corpo de Bombeiros Militar de Santa Catarina.
+            Clique em cada módulo para expandir o conteúdo.
+          </p>
+        </div>
+        <div id="study-content">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ VIEW: CHECKLIST ═══════════ -->
+    <div class="view" id="view-checklist">
+      <div class="checklist">
+
+        <!-- Sidebar -->
+        <aside class="checklist__sidebar" id="checklist-sidebar">
+          <h3 class="checklist__sidebar-title">Progresso da Vistoria</h3>
+          <div class="checklist__progress-bar">
+            <div class="checklist__progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+          <p class="checklist__progress-text" id="progress-text">0% concluído (0/0)</p>
+          <nav class="checklist__nav" id="checklist-nav">
+            <!-- Rendered by JS -->
+          </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="checklist__main" id="checklist-main">
+          <!-- Rendered by JS -->
+        </main>
+
+      </div>
+    </div>
+
+    <!-- ═══════════ MODAL ═══════════ -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
+      <div class="modal" id="modal-content" onclick="event.stopPropagation()">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
