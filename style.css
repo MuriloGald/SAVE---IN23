@@ -1127,6 +1127,9 @@ button {
 .modal {
   width: 100%;
   max-width: 500px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-card);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -1144,6 +1147,7 @@ button {
   font-weight: 700;
   font-size: 1.25rem;
   margin-bottom: var(--space-md);
+  flex-shrink: 0;
 }
 
 .modal__body {
@@ -1151,6 +1155,9 @@ button {
   color: var(--text-secondary);
   line-height: 1.65;
   margin-bottom: var(--space-lg);
+  overflow-y: auto;
+  flex: 1;
+  padding-right: var(--space-xs);
 }
 
 .modal__warning-list {
@@ -1177,6 +1184,7 @@ button {
   display: flex;
   gap: var(--space-md);
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .modal__btn {
@@ -1248,6 +1256,40 @@ button {
   color: var(--amber);
   background: var(--amber-dim);
   border: 1px solid rgba(255, 171, 0, 0.18);
+}
+
+/* ── Article Badge next to Sublabel ─────────────────────────── */
+.article-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--space-xs);
+  padding: 2px 8px;
+  font-size: 0.725rem;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--cyan);
+  background: var(--cyan-dim);
+  border: 1px solid rgba(0, 212, 255, 0.18);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  vertical-align: middle;
+}
+
+.article-badge:hover {
+  background: var(--cyan);
+  color: var(--bg-primary);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.25);
+}
+
+.article-text-container {
+  white-space: pre-line;
+  line-height: 1.7;
+}
+
+.article-text-container strong {
+  color: var(--text-primary);
 }
 
 /* ══════════════════════════════════════════════════════════════

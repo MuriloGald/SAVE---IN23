@@ -1212,10 +1212,15 @@ function renderQuestion(q) {
       break;
   }
 
+  const articleKey = getArticleKey(q.sublabel);
+
   return `
     <div class="form-group ${isConditional ? 'form-group--conditional' : ''}" id="group-${q.id}">
       <label class="form-group__label" for="input-${q.id}">${q.label}</label>
-      ${q.sublabel ? `<p class="form-group__sublabel">${q.sublabel}</p>` : ''}
+      ${q.sublabel ? `<p class="form-group__sublabel">
+        ${q.sublabel}
+        ${articleKey ? `<span class="article-badge" onclick="showArticleModal('${articleKey}', '${q.sublabel.replace(/'/g, "\\'")}')">📖 Ver Artigo</span>` : ''}
+      </p>` : ''}
       ${inputHTML}
     </div>
   `;
@@ -1401,58 +1406,460 @@ function forceSubmit() {
 
 function exportReport() {
   const visibleSections = getVisibleSections();
-  let report = '═══════════════════════════════════════════════════════\n';
-  report += '  RELATÓRIO DE VISTORIA — SAVE (IN 23/2026)\n';
-  report += '  Gerado em: ' + new Date().toLocaleString('pt-BR') + '\n';
-  report += '═══════════════════════════════════════════════════════\n\n';
+  const answers = APP.answers;
 
+  const nomeEdificacao = answers['nome_edificacao'] || 'Não informado';
+  const endereco = answers['endereco'] || 'Não informado';
+  const rtName = answers['responsavel_tecnico'] || 'Não informado';
+  const dataVistoria = answers['data_vistoria'] ? new Date(answers['data_vistoria']).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  
+  const classificacao = answers['classificacao_edificacao'] || '';
+  let dispClass = 'Não informada';
+  if (classificacao === 'existente') dispClass = 'Existente (concluída até 11/11/2013)';
+  else if (classificacao === 'recente') dispClass = 'Recente (concluída após 11/11/2013)';
+  else if (classificacao === 'nova') dispClass = 'Nova (projeto após vigência da IN 23)';
+
+  const saveStatus = answers['save_status'] || '';
+  let dispSave = 'Não informado';
+  if (saveStatus === 'instalado') dispSave = 'Já instalado (regularização)';
+  else if (saveStatus === 'planejamento') dispSave = 'Em planejamento (nova instalação)';
+
+  const tipoLocal = answers['tipo_local'] || '';
+  let dispLocal = 'Não informado';
+  if (tipoLocal === 'descoberto') dispLocal = 'Descoberto (a céu aberto)';
+  else if (tipoLocal === 'cobertura_leve') dispLocal = 'Cobertura leve (sem fechamento)';
+  else if (tipoLocal === 'ventilacao_natural') dispLocal = 'Coberto/fechado COM ventilação natural';
+  else if (tipoLocal === 'fechado') dispLocal = 'Coberto/fechado SEM ventilação natural';
+
+  const area = answers['area_pavimento'] || '0';
+  const numVagas = answers['num_vagas_save'] || '0';
+  const rotas = answers['num_rotas_fuga'] === 'uma' ? 'Uma única rota' : answers['num_rotas_fuga'] === 'duas_ou_mais' ? 'Duas ou mais rotas' : 'Não informado';
+
+  // Determine Exemption (Enquadramento)
+  let enquadramento = 'ANEXO A — PROJETO BASEADO EM DESEMPENHO (PBD) NECESSÁRIO';
+  let enquadramentoDesc = 'A edificação não se enquadra nos critérios de dispensa do Artigo 6º da IN 23/2026. Será necessária a elaboração de um PBD completo com simulação computacional de incêndio e evacuação de pessoas.';
+  let enquadramentoClass = 'nao-conforme';
+
+  const isDescoberto = (tipoLocal === 'descoberto' || tipoLocal === 'cobertura_leve');
+  const isVentiladoDisp = (tipoLocal === 'ventilacao_natural' && answers['vent_aberturas_20pct'] === 'sim' && answers['vent_comprimento_40pct'] === 'sim' && answers['vent_area_limite'] === 'sim' && answers['vent_deteccao'] === 'sim');
+  const isFechadoDisp = (tipoLocal === 'fechado' && answers['fechado_compartimentacao'] === 'sim' && answers['fechado_deteccao'] === 'sim');
+  const isSprinklerDisp = (answers['sprinkler_possui'] === 'sim' && (answers['sprinkler_alimentacao'] === 'dedicado' || (answers['sprinkler_chave_fluxo'] === 'sim' && answers['sprinkler_dreno_teste'] === 'sim' && answers['sprinkler_manometro'] === 'sim')));
+
+  if (isDescoberto || isVentiladoDisp || isFechadoDisp || isSprinklerDisp) {
+    enquadramento = 'ANEXO B — DISPENSA DE PROJETO BASEADO EM DESEMPENHO (PBD) APLICÁVEL';
+    enquadramentoDesc = 'A edificação enquadra-se nos critérios de dispensa do Artigo 6º da IN 23/2026. A regularização do SAVE poderá ser feita via Anexo B (Relatório de Dispensa), necessitando apenas atender aos Requisitos Gerais (Artigos 7º a 18º).';
+    enquadramentoClass = 'conforme';
+  }
+
+  // Collect Non-Conformities
+  let nonConformities = [];
   visibleSections.forEach(section => {
-    const status = APP.sectionStatus[section.id];
-    const statusLabel = status === 'complete' ? '✅ COMPLETA' : status === 'incomplete' ? '⚠️ INCOMPLETA' : '⬜ NÃO VISITADA';
-
-    report += `\n── SEÇÃO ${section.number}: ${section.title.toUpperCase()} [${statusLabel}] ──\n`;
-
-    const visibleQs = section.questions.filter(q => isQuestionVisible(q));
-    visibleQs.forEach(q => {
-      if (q.type === 'heading') {
-        report += `\n  📌 ${q.label}\n`;
-        return;
+    section.questions.forEach(q => {
+      if (q.type === 'yesno' && answers[q.id] === 'nao') {
+        nonConformities.push({
+          section: section.number,
+          item: q.label,
+          ref: q.sublabel || 'IN 23'
+        });
       }
-      if (q.type === 'alert') {
-        report += `  ⚠ ${q.label}\n`;
-        return;
-      }
-
-      const answer = APP.answers[q.id] || '(não respondida)';
-      let displayAnswer = answer;
-      if (q.type === 'yesno') {
-        displayAnswer = answer === 'sim' ? '✓ SIM' : answer === 'nao' ? '✗ NÃO' : answer === 'na' ? '— N/A' : '(não respondida)';
-      }
-      if (q.type === 'select' && q.options && answer) {
-        const opt = q.options.find(o => (typeof o === 'object' ? o.value : o) === answer);
-        if (opt) displayAnswer = typeof opt === 'object' ? opt.label : opt;
-      }
-
-      report += `  • ${q.label}\n    → ${displayAnswer}\n`;
     });
   });
 
-  report += '\n═══════════════════════════════════════════════════════\n';
-  report += '  FIM DO RELATÓRIO\n';
-  report += '═══════════════════════════════════════════════════════\n';
+  // Collect observations
+  const obsNaoConf = answers['obs_nao_conformidades'] || 'Nenhuma observação registrada.';
+  const obsRecom = answers['obs_recomendacoes'] || 'Nenhuma recomendação registrada.';
+  const obsGerais = answers['obs_gerais'] || 'Nenhuma observação geral registrada.';
 
-  // Download as text file
-  const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const nome = APP.answers['nome_edificacao'] || 'vistoria';
-  const data = new Date().toISOString().split('T')[0];
-  a.download = `relatorio_${nome.replace(/\s+/g, '_')}_${data}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  let printHtml = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>Laudo de Viabilidade - SAVE - ${nomeEdificacao}</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+          font-family: 'Inter', sans-serif;
+          color: #1a202c;
+          background: #ffffff;
+          margin: 0;
+          padding: 40px;
+          font-size: 10pt;
+          line-height: 1.5;
+        }
+        .no-print-bar {
+          background: #0f172a;
+          color: white;
+          padding: 12px 24px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-radius: 8px;
+          margin-bottom: 30px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .no-print-btn {
+          background: #00d4ff;
+          color: #0b0f19;
+          border: none;
+          padding: 8px 16px;
+          font-weight: 600;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        .no-print-btn:hover {
+          background: #00b8d9;
+        }
+        .report-header {
+          border-bottom: 3px solid #ff6b35;
+          padding-bottom: 15px;
+          margin-bottom: 25px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .logo-title {
+          font-size: 18pt;
+          font-weight: 700;
+          color: #0b0f19;
+          margin: 0;
+        }
+        .logo-title span {
+          color: #ff6b35;
+        }
+        .report-subtitle {
+          font-size: 9pt;
+          color: #64748b;
+          margin: 3px 0 0 0;
+          font-weight: 500;
+        }
+        .report-title-container {
+          text-align: center;
+          margin-bottom: 25px;
+        }
+        .report-title {
+          font-size: 13pt;
+          font-weight: 700;
+          color: #0f172a;
+          margin: 0 0 8px 0;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .report-meta-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 25px;
+        }
+        .report-meta-table td {
+          padding: 8px 12px;
+          border: 1px solid #e2e8f0;
+          font-size: 9.5pt;
+        }
+        .report-meta-table td.label {
+          font-weight: 600;
+          background-color: #f8fafc;
+          width: 25%;
+          color: #334155;
+        }
+        .enquadramento-box {
+          padding: 15px 20px;
+          border-radius: 6px;
+          margin-bottom: 25px;
+          border: 1px solid #e2e8f0;
+        }
+        .enquadramento-box.conforme {
+          background-color: #f0fdf4;
+          border-left: 5px solid #22c55e;
+          color: #14532d;
+        }
+        .enquadramento-box.nao-conforme {
+          background-color: #fef2f2;
+          border-left: 5px solid #ef4444;
+          color: #7f1d1d;
+        }
+        .enquadramento-title {
+          font-weight: 700;
+          font-size: 11pt;
+          margin: 0 0 5px 0;
+        }
+        .enquadramento-desc {
+          margin: 0;
+          font-size: 9.5pt;
+          line-height: 1.6;
+        }
+        .section-title {
+          font-size: 11pt;
+          font-weight: 700;
+          color: #0f172a;
+          border-bottom: 1px solid #cbd5e0;
+          padding-bottom: 4px;
+          margin-top: 25px;
+          margin-bottom: 12px;
+          text-transform: uppercase;
+          page-break-after: avoid;
+        }
+        .question-row {
+          margin-bottom: 10px;
+          page-break-inside: avoid;
+        }
+        .question-label {
+          font-weight: 500;
+          color: #334155;
+        }
+        .question-answer {
+          font-weight: 700;
+          margin-left: 6px;
+        }
+        .question-answer.sim { color: #15803d; }
+        .question-answer.nao { color: #b91c1c; }
+        .question-answer.na { color: #64748b; }
+        .question-sublabel {
+          font-size: 8.5pt;
+          font-style: italic;
+          color: #64748b;
+          margin: 2px 0 0 0;
+        }
+        .non-conformities-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+          margin-bottom: 25px;
+        }
+        .non-conformities-table th, .non-conformities-table td {
+          border: 1px solid #e2e8f0;
+          padding: 10px;
+          text-align: left;
+          font-size: 9pt;
+        }
+        .non-conformities-table th {
+          background-color: #fef2f2;
+          color: #991b1b;
+          font-weight: 700;
+        }
+        .obs-box {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          padding: 12px 15px;
+          border-radius: 6px;
+          font-size: 9.5pt;
+          color: #334155;
+          margin-bottom: 20px;
+          white-space: pre-line;
+        }
+        .signature-section {
+          margin-top: 50px;
+          display: flex;
+          justify-content: space-between;
+          page-break-inside: avoid;
+        }
+        .signature-box {
+          width: 45%;
+          text-align: center;
+        }
+        .signature-line {
+          border-top: 1px solid #cbd5e0;
+          margin-top: 40px;
+          margin-bottom: 6px;
+        }
+        .signature-name {
+          font-weight: 600;
+          font-size: 9.5pt;
+          color: #0f172a;
+        }
+        .signature-title {
+          font-size: 8.5pt;
+          color: #64748b;
+        }
+        @media print {
+          .no-print-bar {
+            display: none !important;
+          }
+          body {
+            padding: 0;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="no-print-bar">
+        <span>📄 Relatório Gerado com Sucesso! Para salvar em PDF, clique ao lado e selecione "Salvar como PDF".</span>
+        <button class="no-print-btn" onclick="window.print()">Imprimir / Salvar PDF</button>
+      </div>
+
+      <div class="report-header">
+        <div>
+          <h1 class="logo-title">SC <span>FIRE</span></h1>
+          <p class="report-subtitle">ASSESSORIA E ENGENHARIA CONTRA INCÊNDIO</p>
+        </div>
+        <div style="text-align: right;">
+          <p style="margin: 0; font-size: 8.5pt; color: #64748b; font-weight: 600;">VISITA TÉCNICA E LAUDO DE VIABILIDADE</p>
+          <p style="margin: 3px 0 0 0; font-size: 9.5pt; color: #0f172a; font-weight: 700;">SAVE — REGULARIZAÇÃO ANEXO B</p>
+        </div>
+      </div>
+
+      <div class="report-title-container">
+        <h2 class="report-title">Relatório de Visita Técnica e Diagnóstico de Viabilidade</h2>
+        <p style="margin: 0; font-size: 9.5pt; color: #475569;">Fundamentado na IN 23/2026, IN 05 e NBR 17019 — CBMSC</p>
+      </div>
+
+      <table class="report-meta-table">
+        <tr>
+          <td class="label">Edificação/Condomínio</td>
+          <td><strong>${escapeHTML(nomeEdificacao)}</strong></td>
+          <td class="label">Data da Vistoria</td>
+          <td>${dataVistoria}</td>
+        </tr>
+        <tr>
+          <td class="label">Endereço Completo</td>
+          <td colspan="3">${escapeHTML(endereco)}</td>
+        </tr>
+        <tr>
+          <td class="label">Responsável Técnico</td>
+          <td>${escapeHTML(rtName)}</td>
+          <td class="label">Classificação (IN 05)</td>
+          <td>${dispClass}</td>
+        </tr>
+        <tr>
+          <td class="label">Status do SAVE</td>
+          <td>${dispSave}</td>
+          <td class="label">Tipo da Garagem</td>
+          <td>${dispLocal}</td>
+        </tr>
+        <tr>
+          <td class="label">Área do Pavimento</td>
+          <td>${area} m²</td>
+          <td class="label">Vagas Previstas/SAVE</td>
+          <td>${numVagas} vaga(s)</td>
+        </tr>
+        <tr>
+          <td class="label">Rotas de Fuga (Garagem)</td>
+          <td colspan="3">${rotas}</td>
+        </tr>
+      </table>
+
+      <div class="enquadramento-box ${enquadramentoClass}">
+        <h3 class="enquadramento-title">${enquadramento}</h3>
+        <p class="enquadramento-desc">${enquadramentoDesc}</p>
+      </div>
+
+      <div class="section-title">Resumo Técnico das Inspeções por Seção</div>
+  `;
+
+  visibleSections.forEach(section => {
+    if (section.id === 'observacoes') return;
+
+    printHtml += `<div style="margin-bottom: 15px; page-break-inside: avoid;">
+      <h4 style="margin: 15px 0 8px 0; color: #1e293b; border-left: 3px solid #ff6b35; padding-left: 8px; font-size: 10pt; text-transform: uppercase;">
+        Seção ${section.number}: ${section.title}
+      </h4>`;
+
+    const visibleQs = section.questions.filter(q => isQuestionVisible(q));
+    visibleQs.forEach(q => {
+      if (q.type === 'heading' || q.type === 'alert') return;
+      
+      const answer = answers[q.id] || 'Não respondida';
+      let answerClass = 'na';
+      let answerLabel = answer;
+
+      if (q.type === 'yesno') {
+        if (answer === 'sim') { answerClass = 'sim'; answerLabel = 'SIM'; }
+        else if (answer === 'nao') { answerClass = 'nao'; answerLabel = 'NÃO'; }
+        else if (answer === 'na') { answerClass = 'na'; answerLabel = 'N/A'; }
+      }
+
+      printHtml += `
+        <div class="question-row">
+          <span class="question-label">• ${q.label}:</span>
+          <span class="question-answer ${answerClass}">${answerLabel}</span>
+          ${q.sublabel ? `<p class="question-sublabel">${q.sublabel}</p>` : ''}
+        </div>
+      `;
+    });
+
+    printHtml += `</div>`;
+  });
+
+  // Table of Non-Conformities
+  printHtml += `
+    <div style="page-break-before: always;">
+      <div class="section-title" style="color: #b91c1c;">Relatório Detalhado de Não Conformidades (Inspeção de Campo)</div>
+      <p style="font-size: 9.5pt; color: #475569; margin-bottom: 15px;">
+        Os seguintes itens foram diagnosticados em <strong>NÃO CONFORMIDADE</strong> com a Instrução Normativa nº 23/2026 ou normas técnicas associadas (NBR 17019 / NBR 5410). Devem ser corrigidos antes do protocolo no e-SCI.
+      </p>
+  `;
+
+  if (nonConformities.length > 0) {
+    printHtml += `
+      <table class="non-conformities-table">
+        <thead>
+          <tr>
+            <th style="width: 10%;">Seção</th>
+            <th style="width: 55%;">Item Inconforme</th>
+            <th style="width: 35%;">Referência Normativa</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    nonConformities.forEach(nc => {
+      printHtml += `
+        <tr>
+          <td style="text-align: center; font-weight: 600;">${nc.section}</td>
+          <td><strong>${nc.item}</strong></td>
+          <td style="font-style: italic; color: #64748b;">${nc.ref}</td>
+        </tr>
+      `;
+    });
+    printHtml += `
+        </tbody>
+      </table>
+    `;
+  } else {
+    printHtml += `
+      <div class="enquadramento-box conforme" style="margin-top: 15px;">
+        <h3 class="enquadramento-title">Nenhuma Não Conformidade Encontrada</h3>
+        <p class="enquadramento-desc">Todos os itens vistoriados estão em total conformidade com a IN 23/2026 e normas elétricas vigentes.</p>
+      </div>
+    `;
+  }
+
+  printHtml += `
+    </div>
+
+    <div class="section-title">Observações, Registros e Próximos Passos</div>
+    
+    <h4 style="margin: 15px 0 5px 0; color: #334155; font-size: 9.5pt;">Não Conformidades Identificadas (Descrição):</h4>
+    <div class="obs-box">${escapeHTML(obsNaoConf)}</div>
+
+    <h4 style="margin: 15px 0 5px 0; color: #334155; font-size: 9.5pt;">Recomendações Técnicas e Próximos Passos:</h4>
+    <div class="obs-box">${escapeHTML(obsRecom)}</div>
+
+    <h4 style="margin: 15px 0 5px 0; color: #334155; font-size: 9.5pt;">Observações Gerais:</h4>
+    <div class="obs-box">${escapeHTML(obsGerais)}</div>
+
+    <div class="signature-section">
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <p class="signature-name">${escapeHTML(nomeEdificacao)}</p>
+        <p class="signature-title">Representante Legal / Síndico</p>
+      </div>
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <p class="signature-name">Paulo Roberto Ramos</p>
+        <p class="signature-title">Diretor Geral — SC FIRE</p>
+      </div>
+    </div>
+    </body>
+    </html>
+  `;
+
+  // Open in a new tab/window
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+  } else {
+    alert("O bloqueador de pop-ups impediu a abertura do relatório. Por favor, permita pop-ups para este site.");
+  }
 
   closeModal();
 }
@@ -1464,7 +1871,64 @@ function escapeHTML(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ─── Toggle Sidebar (tablet portrait / mobile) ───────────────────
+// ─── Legislação e Visualização de Artigos ─────────────────────────
+
+function getArticleKey(sublabel) {
+  if (!sublabel) return null;
+  const lower = sublabel.toLowerCase();
+  
+  if (lower.includes('in 23') || lower.includes('in23')) {
+    const match = lower.match(/art\.\s*(\d+)/);
+    if (match) return `in23_art${match[1]}`;
+  }
+  if (lower.includes('in 05') || lower.includes('in05') || lower.includes('in 5') || lower.includes('in5')) {
+    if (lower.includes('anexo c')) return 'in5_anexoc';
+    const match = lower.match(/art\.\s*(\d+)/);
+    if (match) return `in5_art${match[1]}`;
+  }
+  if (lower.includes('nbr 17019') || lower.includes('nbr17019')) return 'nbr17019';
+  if (lower.includes('nbr 5410') || lower.includes('nbr5410')) return 'nbr5410';
+  if (lower.includes('nbr 5419') || lower.includes('nbr5419')) return 'nbr5419';
+  
+  return null;
+}
+
+function showArticleModal(key, title) {
+  const overlay = document.getElementById('modal-overlay');
+  const modal = document.getElementById('modal-content');
+  if (!modal || !overlay) return;
+
+  const articleText = ARTICLES_DB[key] || "Artigo não encontrado no banco de dados.";
+  
+  // Format the text nicely for reading (adding linebreaks and bolding items)
+  let formattedText = articleText
+    .replace(/\n/g, '<br>')
+    .replace(/•/g, '<br>•')
+    .replace(/I - /g, '<br><strong>I - </strong>')
+    .replace(/II - /g, '<br><strong>II - </strong>')
+    .replace(/III - /g, '<br><strong>III - </strong>')
+    .replace(/IV - /g, '<br><strong>IV - </strong>')
+    .replace(/V - /g, '<br><strong>V - </strong>')
+    .replace(/VI - /g, '<br><strong>VI - </strong>')
+    .replace(/VII - /g, '<br><strong>VII - </strong>')
+    .replace(/VIII - /g, '<br><strong>VIII - </strong>')
+    .replace(/IX - /g, '<br><strong>IX - </strong>')
+    .replace(/X - /g, '<br><strong>X - </strong>')
+    .replace(/§/g, '<br>§')
+    .replace(/Art\./g, '<br><strong>Art.</strong>');
+
+  modal.innerHTML = `
+    <h3 class="modal__title">📖 Legislação: ${title}</h3>
+    <div class="modal__body" style="text-align: left; max-height: 50vh; font-family: var(--font-body); font-size: 0.9rem;">
+      <div class="article-text-container">${formattedText}</div>
+    </div>
+    <div class="modal__actions">
+      <button class="modal__btn modal__btn--cancel" onclick="closeModal()">Fechar</button>
+    </div>
+  `;
+
+  overlay.classList.add('modal-overlay--active');
+}
 
 function toggleSidebar() {
   const sidebar = document.getElementById('checklist-sidebar');
